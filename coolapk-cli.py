@@ -9,7 +9,7 @@ s = requests.session()
 
 headers = {'Connection':'close'}
 
-searchinput = input('包名或应用名:')
+searchinput = input('应用名:')
 
 searchurl = 'http://coolapk.com/apk/search/?q='+searchinput
 
