@@ -1,6 +1,8 @@
 #coding=utf-8
 import requests
 import re
+import sys
+from contextlib import closing
 
 class InputError(Exception):
     pass
@@ -100,7 +102,16 @@ if not '(0)' in sumpermission[0]:
 else:
     print('没有权限 ...')
 if input('下载?(Y/n)') != 'n':
-    with open(packname[0]+'_'+name8version[0][1]+'.apk','wb') as file:
-        file.write(s.get(downloadurl+'&extra=0', headers=headers).content)
+    print("Downloading...")
+    percentage = 0
+    with closing(s.get(downloadurl+'&extra=0', headers=headers, stream=True)) as r:
+        content_size = int(r.headers['content-length'])
+        chunk_size = 1024
+        with open(packname[0]+'_'+name8version[0][1]+'.apk','wb') as file:
+            for data in r.iter_content(chunk_size=chunk_size):
+                file.write(data)
+                percentage += 100*len(data)/content_size
+                print("%.2f%%" % percentage, end="\r")
+    print("All Done! Have Fun!")
 else:
     exit(0)
