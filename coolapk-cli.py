@@ -1,8 +1,7 @@
 #coding=utf-8
-import requests
-import re
-import sys
 from contextlib import closing
+import re
+import requests
 
 class InputError(Exception):
     pass
@@ -17,10 +16,10 @@ searchurl = 'http://coolapk.com/apk/search/?q='+searchinput
 
 searchpage = s.get(searchurl, headers=headers).text
 
-searchpatch = re.findall(r'<a href="\S+">'+searchinput+'(.*?)</a>', searchpage)
+searchpatch = re.findall(r'<a href="\S+">'+searchinput+'(.*?)</a>', searchpage, re.I)
 
 if searchpatch == []:
-    searchpatch = re.findall(r'<a href="\S+">(.*?)'+searchinput+'</a>', searchpage)
+    searchpatch = re.findall(r'<a href="\S+">(.*?)'+searchinput+'</a>', searchpage, re.I)
     searchoutput = searchpatch[0]+searchinput
 elif '帐号登录' in searchpatch:
     searchpatch = ['']
@@ -29,7 +28,7 @@ elif len(searchpatch) >= 3:
     searchpatch = ['']
     searchoutput = searchinput
 else:
-    searchpatch = searchinput+searchpatch[0]
+    searchoutput = searchinput+searchpatch[0]
 
 packname = re.findall(r'<a href="/apk/(\S+)">'+searchoutput+'</a>', searchpage, re.I)
 
@@ -102,16 +101,17 @@ if not '(0)' in sumpermission[0]:
 else:
     print('没有权限 ...')
 if input('下载?(Y/n)') != 'n':
-    print("Downloading...")
+    print("下载中...")
     percentage = 0
     with closing(s.get(downloadurl+'&extra=0', headers=headers, stream=True)) as r:
         content_size = int(r.headers['content-length'])
         chunk_size = 1024
+        print('共%.2f MB' %(int(r.headers['content-length'])/1048576))
         with open(packname[0]+'_'+name8version[0][1]+'.apk','wb') as file:
             for data in r.iter_content(chunk_size=chunk_size):
                 file.write(data)
                 percentage += 100*len(data)/content_size
                 print("%.2f%%" % percentage, end="\r")
-    print("All Done! Have Fun!")
+    print("搞定,收工!")
 else:
     exit(0)
