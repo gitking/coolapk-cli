@@ -18,28 +18,28 @@ searchurl = 'http://coolapk.com/apk/search/?q='+searchinput
 
 searchpage = s.get(searchurl, headers=headers).text
 
-searchpatch = re.findall(r'<a href="\S+">'+searchinput+'(.*?)</a>', searchpage, re.I)
+packnamelist = re.findall(r'<li id="apk-\d+" class="media" data-touch-url="/apk/(\S+)">', searchpage)
 
-if searchpatch == []:
-    searchpatch = re.findall(r'<a href="\S+">(.*?)'+searchinput+'</a>', searchpage, re.I)
-    searchoutput = searchpatch[0]+searchinput
-elif '帐号登录' in searchpatch:
-    searchpatch = ['']
-    searchoutput = searchinput
-elif len(searchpatch) >= 3:
-    searchpatch = ['']
-    searchoutput = searchinput
-else:
-    searchoutput = searchinput+searchpatch[0]
+if packnamelist == []:
+    raise InputError('输入有误')
 
-packname = re.findall(r'<a href="/apk/(\S+)">'+searchoutput+'</a>', searchpage, re.I)
+for i in packnamelist:
+    apkname = re.findall(r'<a href="/apk/'+i+'">(.*?)</a>', searchpage)
+    apknums = re.findall(r'<li id="apk-(\d+)" class="media" data-touch-url="/apk/'+i+'">', searchpage)
+    print(apkname[0],apknums[0])
 
-if packname == []:
-    raise InputError('找不到匹配')
+apknum = input('请输入序号:')
+    
+apkurl = 'http://coolapk.com/apk/'+apknum
 
-apkurl = 'http://coolapk.com/apk/'+packname[0]
+apkpage1 = s.get(apkurl, headers=headers)
 
-apkpage = s.get(apkurl, headers=headers).text
+apkpage = apkpage1.text
+
+packname = re.findall(r'http://coolapk.com/apk/(\S+)', str(apkpage1.url))
+
+if packname == apknum:
+    raise InputError('输入有误')
 
 name8version = re.findall(r'<h1 class="media-heading ex-apk-view-title">(\S+) <small>(\S+)</small></h1>', apkpage)
 
@@ -114,6 +114,6 @@ if input('下载?(Y/n)') != 'n':
                 file.write(data)
                 percentage += 100*len(data)/content_size
                 print("%.2f%%" % percentage, end="\r")
-    print("搞定,收工!")
+    print("完成")
 else:
     exit(0)
