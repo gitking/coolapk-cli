@@ -1,119 +1,92 @@
 #!/usr/bin/env python3
 #coding=utf-8
 
-from contextlib import closing
-import re
 import requests
+import json
 
 class InputError(Exception):
     pass
 
+#apikey=都是定值,
+#cookie=自己抓包XD
+
+url = 'http://api.coolapk.com/market/v2/api.php?apikey='+apikey
+
 s = requests.session()
 
-headers = {'Connection':'close'}
+headers = {'Connection':'close','Cookie': 'coolapk_did='+cookie,'Host': 'api.coolapk.com'}
 
 searchinput = input('应用名:')
 
-searchurl = 'http://coolapk.com/apk/search/?q='+searchinput
+searchurl = url+'&method=getSearchApkList&q='+searchinput
 
-searchpage = s.get(searchurl, headers=headers).text
+searchpage = s.get(searchurl, headers=headers)
 
-packnamelist = re.findall(r'<li id="apk-\d+" class="media" data-touch-url="/apk/(\S+)">', searchpage)
+jsonpage = json.loads(searchpage.text)
 
-if packnamelist == []:
-    raise InputError('输入有误')
+print('apk name','id')
+for i in jsonpage:
+    print(i['title'],i['id'])
 
-for i in packnamelist:
-    apkname = re.findall(r'<a href="/apk/'+i+'">(.*?)</a>', searchpage)
-    apknums = re.findall(r'<li id="apk-(\d+)" class="media" data-touch-url="/apk/'+i+'">', searchpage)
-    print(apkname[0],apknums[0])
 
 apknum = input('请输入序号:')
     
-apkurl = 'http://coolapk.com/apk/'+apknum
+apkurl = url+'&method=getApkField&id='+apknum
 
 apkpage1 = s.get(apkurl, headers=headers)
 
-apkpage = apkpage1.text
-
-packname = re.findall(r'http://coolapk.com/apk/(\S+)', str(apkpage1.url))
-
-if packname == apknum:
+try:
+    apkpage = json.loads(apkpage1.text)
+except:
     raise InputError('输入有误')
 
-name8version = re.findall(r'<h1 class="media-heading ex-apk-view-title">(\S+) <small>(\S+)</small></h1>', apkpage)
 
-developer = re.findall(r'<dt>开发者：</dt><dd>(.*?)</dd>', apkpage)
+print()
+print('应用名称:'+apkpage['field']['title'],'版本:'+apkpage['field']['version'],'包名:'+apkpage['field']['apkname'],'开发者:'+apkpage['meta']['developername'])
+print('软件大小:'+apkpage['field']['apksize'],'下载数量'+apkpage['meta']['downnum'],apkpage['field']['softtype'],apkpage['field']['language'])
+print('ROM版本:'+apkpage['field']['romversion']+'+')
+print()
+print('酷安点评:'+apkpage['field']['remark'])
+print()
+print('评分'+apkpage['meta']['score'])
+print('评分人数:'+apkpage['meta']['votenum'])
+print('五星'+apkpage['field']['votenum5'])
+print('四星'+apkpage['field']['votenum4'])
+print('三星'+apkpage['field']['votenum3'])
+print('二星'+apkpage['field']['votenum2'])
+print('一星'+apkpage['field']['votenum1'])
 
-print('应用名称:'+name8version[0][0],'版本:'+name8version[0][1],'包名:'+packname[0],'开发者:'+developer[0])
-
-basicinfo = re.findall(r'<span class="pull-left hidden-sm hidden-xs">(\S+)</span><span>(.*?)</span>', apkpage)
-
-print(basicinfo[0][0]+basicinfo[0][1])
-
-downloadurl = re.findall('var apkDownloadUrl = "(\S+)"', apkpage)[0]
-
-editorcomments = re.findall(r'<strong>酷安点评：</strong>(\S+) <a href="/n/(\S+)">', apkpage)
-if editorcomments != []:
-    print(editorcomments[0][1]+'点评:'+editorcomments[0][0])
-
-rankscore = re.findall(r'<span class="ex-apk-rank-score">(\S+)</span>',apkpage)
-rankstat = re.findall(r'<a class="ex-gray-link" href="">(\S+)</a>', apkpage)
-rankpercent = re.findall(r'<span class="ex-apk-rank-percent">(\S+)</span>', apkpage)
-
-print('评分'+rankscore[0])
-print(rankstat[0])
-print('五星'+rankpercent[0])
-print('四星'+rankpercent[1])
-print('三星'+rankpercent[2])
-print('二星'+rankpercent[3])
-print('一星'+rankpercent[4])
-
-sumpermission = re.findall(r'<a href="#ex-apk-permission-pane" data-toggle="tab">(\S+)</a>', apkpage)
-print(sumpermission[0])
-
-temp1 = re.findall(r'<div class="ex-card-content">.*?</div>', apkpage, flags=re.DOTALL)[0]
-temp2 = temp1.replace('<div class="ex-card-content">\n','')
-temp3 = re.sub(r'</?\S\S\S\S>', '', temp2)
-temp4 = re.sub(r'</?\S>', '', temp3)
-temp5 = temp4.replace('  ','')
-introduction = temp5.replace('<br />','\r\n')
 print('\n======================应用简介=========================')
-print(introduction)
+print(apkpage['field']['introduce'].replace('<br />','\r\n'))
 
-temp1 = re.findall(r'<h2>'+name8version[0][1]+'</h2>.*?</div>.*?\W<div class="ex-card-wrapper">(.*?)</div>', apkpage, flags=re.DOTALL)[0]
-temp2 = temp1.replace('<br />','')
-whatsnew = temp2.replace('  ','')
-print('======================更新了啥=========================')
-print(whatsnew)
+print('\n======================更新日志=========================')
+print(apkpage['field']['changehistory'].split('\n')[0])
+print(apkpage['field']['changelog'])
 
-if not '(0)' in sumpermission[0]:
-    if input('打印权限?(y/N)') == 'y':
-        temp1 = re.findall(r'<div id="ex-apk-permission-pane" class="tab-pane ex-apk-permission-pane">.*</dl>\W+/div>', apkpage, flags=re.DOTALL)[0]
-        temp2 = temp1.replace(' ', '')
-        temp3 = temp2.replace('</dt><dd><strong>', ' ')
-        temp4 = temp3.replace('<dt>','')
-        temp5 = temp4.replace('<divid="ex-apk-permission-pane"class="tab-paneex-apk-permission-pane">\n<dlclass="dl-horizontal">','')
-        temp6 = temp5.replace('</dl>\n</div>','')
-        temp7 = temp6.replace('</strong>',' ')
-        temp8 = temp7.replace('</dd>','')
-        permissions = temp8.replace('</dt>','')
-        print('======================所需权限=========================')
-        print(permissions)
-else:
-    print('没有权限 ...')
-if input('下载?(Y/n)') != 'n':
+
+
+a = input('打印权限?(y/N)')
+if a == 'y':
+    print('\n======================所需权限=========================')
+    print(apkpage['field']['permissions'])
+elif a == 'n' or a == '':
+    pass
+
+b = input('下载?(Y/n)')
+if b == 'y' or b == '':
+    from contextlib import closing
     print("下载中...")
+    downloadurl = apkpage['field']['apkfile'].replace(' ', '')
     percentage = 0
-    with closing(s.get(downloadurl+'&extra=0', headers=headers, stream=True)) as r:
+    with closing(requests.get(downloadurl, stream=True)) as r:
         content_size = int(r.headers['content-length'])
         chunk_size = 1024
         print('共%.2f MB' %(int(r.headers['content-length'])/1048576))
-        with open(packname[0]+'_'+name8version[0][1]+'.apk','wb') as file:
+        with open(apkpage['field']['apkname']+'_'+apkpage['field']['version']+'.apk','wb') as file:
             for data in r.iter_content(chunk_size=chunk_size):
                 file.write(data)
                 percentage += 100*len(data)/content_size
                 print("%.2f%%" % percentage, end="\r")
-    print("完成")
+    print("\n完成")
 else:
     exit(0)
